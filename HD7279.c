@@ -1,4 +1,5 @@
 #include <reg51.h>
+#include "HD7279.h"
 #include "delay.h"
 
 #define READ_KEY 0x15
@@ -10,9 +11,9 @@ sbit DAT=P1^7;
 sbit CLK=P1^6;
 sbit KEY=P3^2;
 
-void init_7279()
+unsigned char init_7279()
 {
-  return;
+  return 0;
 }
 
 unsigned char get_key()
@@ -30,7 +31,7 @@ void putc_7279(unsigned char dat)
   LONG_DELAY; // around 50us
   for(i=0;i<8;i++)
   {
-    DAT = data&select_bit ? 1 : 0;
+    DAT = dat&select_bit ? 1 : 0;
     CLK=1;
     SHORT_DELAY;
     CLK=0;
@@ -40,11 +41,10 @@ void putc_7279(unsigned char dat)
   DAT=0;
 }
 
-unsigned char getc_7279(void)
+unsigned char getc_7279()
 {
   unsigned char i;
   unsigned char rst=0x00;
-  CS=0;
   LONG_DELAY;
   DAT=1;
   for(i=0;i<8;i++)

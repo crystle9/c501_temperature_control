@@ -1,3 +1,5 @@
+#include "delay.h"
+
 void delay6us(unsigned char t)
 {
   unsigned char i;

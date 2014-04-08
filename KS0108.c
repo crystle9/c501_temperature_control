@@ -34,11 +34,12 @@ unsigned char draw_spline(unsigned char y, unsigned char value)
   unsigned char i;
   unsigned char x0,p0;
 
+  if (y > 63) return 'Y';
+  clear_y(y,2);
+  
   if (value > 55) return 'H';
   if (value < 8) return 'L';
-  if (y > 63) return 'Y';
 
-  clear_y(y,2);
   x0 = 9 - value / 8;
   p0 = value % 8;
   if(p0 > 0)

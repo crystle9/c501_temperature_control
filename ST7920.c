@@ -1,7 +1,6 @@
 #include <reg51.h>
 #include "ST7920.h"
 #include "intrins.h"
-#include "courier.h"
 
 #define ENABLE 1
 #define DISABLE 0
@@ -12,47 +11,44 @@
 #define RSSPLAY_ON 0x3F
 #define RSSPLAY_OFF 0x3E
 
+#define GRAPH_MODE_ON 0x36
+#define GRAPH_MODE_OFF 0x30
+
 sbit  RS = P2^0;
 sbit  RW = P2^1;
 sbit  EN = P2^2;
-sbit  CS1= P2^3;
-sbit  CS2= P2^4;
-sbit  RST_= P2^5;
 sbit  BF = P0^7;
-unsigned char current_x, current_n;
 
 void init_ST7920()
 {
-  RST_ = 1;
-  putc_command(RSSPLAY_ON);
-  set_start_line(0);
-  set_xy(0,0);
+  send_command(RSSPLAY_ON);
 }
 
-unsigned char draw_spline(unsigned char y, unsigned char value)
+unsigned char draw_spline(unsigned char value)
 {
-  unsigned char i;
-  unsigned char x0,p0;
+  static unsigned char point = 0x80;
+  static unsigned char c0 = 0x00;
 
-  if (y > 63) return 'Y';
-  clear_y(y,2);
+  if (value < 0x00)
+    {
+      draw_spline(0x00);
+      return 'L';
+    }
+  if (value > 0x2F)
+    {
+      draw_spline(0x2F);
+      return 'H';
+    }
   
-  if (value > 55) return 'H';
-  if (value < 8) return 'L';
-
-  x0 = 9 - value / 8;
-  p0 = value % 8;
-  if(p0 > 0)
-    {
-      set_xy(x0-1,y);
-      p0 = 8 - p0;
-      putc_data(0xFF<<p0);
-    }
-  for(i = x0; i < 8; i++)
-    {
-      set_xy(i,y);
-      putc_data(0xFF);
-    }
+  send_command(GRAPH_MODE_ON);
+  clear_col(c0+1,0x10);
+  set_position(c0,0x3F-value);
+  send_data(point);
+  point >>= 1;
+  if (point == 0x80)
+    if (++c0 > 0x07)
+      c0 = 0;
+  send_command(GRAPH_MODE_OFF);
   return 0;
 }
 /****************************************************************
@@ -63,64 +59,40 @@ unsigned char draw_spline(unsigned char y, unsigned char value)
  ****************************************************************/
 void put_line(unsigned char * str, unsigned char indent)
 {
-  unsigned char * p = str;
+  unsigned char i;
 
-  set_x(current_x);
-  if (indent < 8)
+  for (i = 0; i < 16 - indent; i++)
     {
-      _put_line_ST7920(p,1,indent);      
-      set_x(current_x-2);
-      p = str + 8 - indent;
-      _put_line_ST7920(p,2,0);
+      send_data(*str++);
+      if (*str == 0x00)
+	break;
     }
-  else
-    _put_line_ST7920(p,2,indent-8);
 }
 
-/****************************************************************
- * at current row
- *
- * FILL the given chip with CHARACTERs (occupies 2 rows)
- * and set X_ADDRESS to NEWLINE
- *
- * the given str should ONLY contain asicc CHARACTERS
- * and end with 0x00s
- * y0 specify this operation's start pixel 
- ****************************************************************/
-void _put_line_ST7920(unsigned char * str, unsigned char cs, unsigned char indent)
+void set_cursor(unsigned char x, unsigned char y)
 {
-  unsigned char c, i, j;
+  while(x < 0) x+=8;
+  while(y < 0) y+=4;
+  while(x > 7) x-=8;
+  while(y > 3) y-=4;
 
-  cs == 1 ? select1() : select2();
-
-  set_y(indent * 8);
-  for (i = 0; i < 8 - indent; i++)
-    {
-      c = str[i];
-      if (c == 0x00) break;
-      for (j = 0; j < 8; j++)
-	putc_data(courier[j][c]);	
-    }
-
-  set_x(current_x+1);
-  set_y(indent * 8);
-  for (i = 0; i < 8 - indent; i++)
-    {
-      c = str[i];
-      if (c == 0x00) break;
-      for (j = 8; j < 16; j++)
-	putc_data(courier[j][c]);	
-    }
-  set_x(current_x+1);
+  if (y == 0)
+    send_command(0x80+x);
+  else if (y == 1)
+    send_command(0x90+x);
+  else if (y == 2)
+    send_command(0x88+x);
+  else
+    send_command(0x98+x);
 }
 
-void putc_data(unsigned char c)
+void send_data(unsigned char c)
 {
   RS=DATA;
   _putc_ST7920(c);
 }
 
-void putc_command(unsigned char c)
+void send_command(unsigned char c)
 {
   RS=COMMAND;
   _putc_ST7920(c);
@@ -158,98 +130,73 @@ void check_busy(void)
 
 void clear_screen()
 {
+  unsigned char i,j;
+
+  for (i = 0; i < 4; i++)
+    {
+      _set_xy(i,0);
+      for (j = 0; j < 16; j++)
+	send_data(' ');
+    }
+}
+
+/****************************************************************
+ * pixel_clear
+ ****************************************************************/
+void clear_row(unsigned char row, unsigned char c0)
+{
+  unsigned char j;
+
+  send_command(GRAPH_MODE_ON);
+  for(j = c0; j < 0x08; j++)
+    {
+      set_position(j,row);
+      send_data(0x00);
+    }
+  send_command(GRAPH_MODE_OFF);  
+}
+
+/****************************************************************
+ * page_clear
+ ****************************************************************/
+void clear_col(unsigned char col, unsigned char r0)
+{
   unsigned char i;
 
-  select1();
-  for(i = 0; i < 8; i++)
-    clear_x(i,0);
-  select2();
-  for(i = 0; i < 8; i++)
-    clear_x(i,0);
-  select1();
-}
-
-/****************************************************************
- * at the CURRENT chip:
- *
- * set Y_ADDRESS and clear data at EACH X after x0
- ****************************************************************/
-void clear_y(unsigned char y, unsigned char x0)
-{
-  unsigned char i;
-  for(i = x0; i < 8; i++)
+  send_command(GRAPH_MODE_ON);
+  for(i = r0; i < 0x2F; i++)
     {
-      set_xy(i,y);
-      putc_data(0x00);
+      set_position(col,i);
+      send_data(0x00);
     }
+  send_command(GRAPH_MODE_OFF);
 }
 
-/****************************************************************
- * at the CURRENT chip:
- *
- * set X_ADDRESS and clear data at EACH Y after y0
- ****************************************************************/
-void clear_x(unsigned char x, unsigned char y0)
+void _set_xy(unsigned char x, unsigned char y)
 {
-  unsigned char  j;
-  set_xy(x, y0);
-  for(j = y0; j < 64; j++)
-    putc_data(0x00);
+  send_command(GRAPH_MODE_ON);
+  send_command(y);
+  send_command(x);
+  send_command(GRAPH_MODE_OFF);
 }
 
-/****************************************************************
- * use current_x:
- *
- * select chip 1 and set X_ADDRESS to current_x
- ****************************************************************/
-void select1()
+void set_position(unsigned char c0, unsigned char r0)
 {
-  CS1 = 0; CS2 = 1;
-  set_x(current_x);
-}
+  unsigned char col, row, x, y;
 
-void select2()
-{
-  CS1 = 1; CS2 = 0;
-  set_x(current_x);
-}
+  col = c0;
+  row = r0;
+  while(col < 0) col+=0x08;
+  while(row < 0) row+=0x2F;
+  while(col > 0x08) col-=0x08;
+  while(row > 0x2F) row-=0x2F;
 
-void set_start_line(unsigned char n)
-{
-  if(n < 64)
+  x = col;
+  y = row;
+  if (row > 0x1F)
     {
-      putc_command(0xC0 + n);
-      current_n = n;
+      x+=0x08;
+      y-=0x1F;
     }
-  else set_start_line(n % 64);
-}
-
-void set_xy(unsigned char x, unsigned char y)
-{
-  set_x(x);
-  set_y(y);
-}
-
-/****************************************************************
- *
- *
- * set X_ADDRESS and UPDATE current_x
- ****************************************************************/
-void set_x(unsigned char x)
-{
-  if(x < 8)
-    {
-      putc_command(0xB8 + x);
-      current_x = x;
-    }
-  else
-      set_x(x - 8);
-}
-
-void set_y(unsigned char y)
-{
-  if(y < 64)
-    putc_command(0x40 + y);
-  else
-    set_x(y - 64);
+  _set_xy(x,y);
 }

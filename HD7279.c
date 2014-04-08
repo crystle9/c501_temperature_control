@@ -11,19 +11,19 @@ sbit DAT=P1^7;
 sbit CLK=P1^6;
 sbit KEY=P3^2;
 
-unsigned char init_7279()
+unsigned char init_HD7279()
 {
   return 0;
 }
 
 unsigned char get_key()
 {
-  putc_7279(READ_KEY);
+  putc_HD7279(READ_KEY);
   delay6us(4);
-  return(getc_7279());
+  return(getc_HD7279());
 }
 
-void putc_7279(unsigned char dat)
+void putc_HD7279(unsigned char dat)
 {
   unsigned char i;
   unsigned char select_bit = 0x80;
@@ -41,7 +41,7 @@ void putc_7279(unsigned char dat)
   DAT=0;
 }
 
-unsigned char getc_7279()
+unsigned char getc_HD7279()
 {
   unsigned char i;
   unsigned char rst=0x00;

@@ -9,10 +9,10 @@
 #define WRITE 0
 #define DATA 1
 #define COMMAND 0
-#define DISPLAY_ON 0x3F
-#define DISPLAY_OFF 0x3E
+#define RSSPLAY_ON 0x3F
+#define RSSPLAY_OFF 0x3E
 
-sbit  DI = P2^0;
+sbit  RS = P2^0;
 sbit  RW = P2^1;
 sbit  EN = P2^2;
 sbit  CS1= P2^3;
@@ -21,10 +21,10 @@ sbit  RST_= P2^5;
 sbit  BF = P0^7;
 unsigned char current_x, current_n;
 
-void init_LCD()
+void init_ST7920()
 {
   RST_ = 1;
-  putc_command(DISPLAY_ON);
+  putc_command(RSSPLAY_ON);
   set_start_line(0);
   set_xy(0,0);
 }
@@ -68,13 +68,13 @@ void put_line(unsigned char * str, unsigned char indent)
   set_x(current_x);
   if (indent < 8)
     {
-      _put_line_LCD(p,1,indent);      
+      _put_line_ST7920(p,1,indent);      
       set_x(current_x-2);
       p = str + 8 - indent;
-      _put_line_LCD(p,2,0);
+      _put_line_ST7920(p,2,0);
     }
   else
-    _put_line_LCD(p,2,indent-8);
+    _put_line_ST7920(p,2,indent-8);
 }
 
 /****************************************************************
@@ -87,7 +87,7 @@ void put_line(unsigned char * str, unsigned char indent)
  * and end with 0x00s
  * y0 specify this operation's start pixel 
  ****************************************************************/
-void _put_line_LCD(unsigned char * str, unsigned char cs, unsigned char indent)
+void _put_line_ST7920(unsigned char * str, unsigned char cs, unsigned char indent)
 {
   unsigned char c, i, j;
 
@@ -116,14 +116,14 @@ void _put_line_LCD(unsigned char * str, unsigned char cs, unsigned char indent)
 
 void putc_data(unsigned char c)
 {
-  DI=DATA;
-  _putc_LCD(c);
+  RS=DATA;
+  _putc_ST7920(c);
 }
 
 void putc_command(unsigned char c)
 {
-  DI=COMMAND;
-  _putc_LCD(c);
+  RS=COMMAND;
+  _putc_ST7920(c);
 }
 
 /****************************************************************
@@ -131,7 +131,7 @@ void putc_command(unsigned char c)
  *
  * emitt 8-bit to LCD
  ****************************************************************/
-void _putc_LCD(unsigned char c)
+void _putc_ST7920(unsigned char c)
 {
   check_busy();
   RW=WRITE;
@@ -142,21 +142,18 @@ void _putc_LCD(unsigned char c)
 
 void check_busy(void)
 {
-  _nop_();_nop_();_nop_();
-  /*DI=COMMAND;
+  RS=COMMAND;
   RW=READ;
   P0=0xFF;
-  EN=ENABLE;
   while(BF)
     {
-      DI=COMMAND;
+      EN=ENABLE;
+      EN=DISABLE;
+      RS=COMMAND;
       RW=READ;
       P0=0xFF;
-      EN=ENABLE; 
     }
   EN=DISABLE;
-  RW=WRITE;
-  DI=DATA;*/
 }
 
 void clear_screen()

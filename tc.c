@@ -1,7 +1,7 @@
 #include <reg51.h>
 #include <stdio.h>
 #include "DS18B20.h"
-#include "KS0108.h"
+#include "ST7920.h"
 #include "HD7279.h"
 
 #define LBUF 17
@@ -37,9 +37,11 @@ void init()
   tp = 41;
   old_tp = tp;
   EA = 1;
-  init_LCD();
+  init_ST7920();
+  init_HD7279();
   clear_screen();
   init_t0();
+  init_ie0();
   render_static_obj();
 }
 

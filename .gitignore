@@ -1,0 +1,13 @@
+*test*
+*.Bak
+*.LST
+*.OBJ
+*.Opt
+*.M51
+*.DSN
+*.dmp
+*.PWI
+*.Uv2
+*.plg
+*.hex
+/tools

@@ -10,8 +10,9 @@ const unsigned char code3[8]={1,3,4,6,4,12,8,9};
 const unsigned char code2[4]={3,6,12,9};
 const unsigned char code1[4]={1,2,4,8};
 
-static unsigned char i = 0;
+unsigned char i = 0;
 
+#if 0
 void step_mode3()
 {
   if(++i>7)
@@ -27,6 +28,7 @@ void step_mode2()
   P1 &= 0xF0;
   P1 |= code2[i];
 }
+#endif
 
 void step_mode1()
 {

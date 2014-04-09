@@ -9,10 +9,12 @@
 #define DATA 1
 #define COMMAND 0
 
-#define DISPLAY_ON 0x3F
-#define DISPLAY_OFF 0x3E
+#define CLEAR_SCREEN 0x01
+#define RESET_AC 0x10
+#define EXTEND_BEGIN 0x34
 #define GRAPH_MODE_ON 0x36
-#define GRAPH_MODE_OFF 0x30
+#define GRAPH_MODE_OFF 0x34
+#define EXTEND_END 0x30
 
 sbit RS = P2^0;
 sbit RW = P2^1;
@@ -23,7 +25,11 @@ sbit BF = P0^7;
 void init_ST7920()
 {
   PSB = 1;
-  send_command(DISPLAY_ON);
+  send_command(0x30);
+  send_command(0x0c);
+  send_command(0x01);
+  send_command(0x06);
+  send_command(RESET_AC);
 }
 
 unsigned char draw_spline(unsigned char value)
@@ -44,40 +50,31 @@ unsigned char draw_spline(unsigned char value)
       return 'H';
     }
   
-  send_command(GRAPH_MODE_ON);
+  send_command(EXTEND_BEGIN);
+  send_command(GRAPH_MODE_OFF);
   r0 = 0x3F - value;
   for (i = 0x10; i < 0x3F; i++)
     {
-      unit_buf = getc_GDRAM(c0,i);
+      unit_buf = _getc_GDRAM(c0,i);
       unit_buf|= _cror_(sel1,1);
       if (i < r0)
 	unit_buf&= ~sel1;
-      set_position(c0,i);
+      _set_xy(c0,i);
       send_data(unit_buf);
     }
   sel1 = _cror_(sel1,1);
   if (sel1 == 0x80)
       if (++c0 > 0x07)
 	c0 = 0;
-  send_command(GRAPH_MODE_OFF);
+  send_command(GRAPH_MODE_ON);
+  send_command(EXTEND_END);
   return 0;
 }
-/****************************************************************
- * at current row
- * given a string (0 < length < 16)
- *
- * print a stream of CHARACTERs on a single line
- ****************************************************************/
-void put_line(unsigned char * str, unsigned char length)
-{
-  unsigned char i;
 
-  for (i = 0; i < length; i++)
-    {
-      send_data(*str++);
-      if (*str == 0x00)
-	break;
-    }
+void put_line(unsigned char * str)
+{
+  while(*str)
+      send_data(*(str++));
 }
 
 void set_cursor(unsigned char x, unsigned char y)
@@ -130,14 +127,17 @@ unsigned char _getc_ST7920()
   check_busy();
   RW=READ;
   P0=0xFF;
+  EN=DISABLE;  
   EN=ENABLE;
+  _nop_();_nop_();_nop_();
   dat = P0;
   EN=DISABLE;
+  return dat;
 }
 
-unsigned char getc_GDRAM(unsigned char c0, unsigned char r0)
+unsigned char _getc_GDRAM(unsigned char c0, unsigned char r0)
 {
-  set_position(c0,r0);
+  _set_xy(c0,r0);
   RS = DATA;
   return _getc_ST7920();
 }
@@ -147,71 +147,27 @@ void check_busy(void)
   RS=COMMAND;
   RW=READ;
   P0=0xFF;
+  EN=DISABLE;  
   EN=ENABLE;
-  while(BF)
+  _nop_();_nop_();_nop_();
+  while(0) // BF
     {
-      EN=DISABLE;
       RS=COMMAND;
       RW=READ;
       P0=0xFF;
+      EN=DISABLE;
       EN=ENABLE;
+      _nop_();_nop_();_nop_();
     }
   EN=DISABLE;
 }
 
 void clear_screen()
 {
-  unsigned char i,j;
-
-  for (i = 0; i < 4; i++)
-    {
-      set_cursor(i,0);
-      for (j = 0; j < 16; j++)
-	send_data(' ');
-    }
+  send_command(CLEAR_SCREEN);
 }
 
-/****************************************************************
- * pixel_clear
- ****************************************************************/
-void clear_row(unsigned char row, unsigned char c0)
-{
-  unsigned char j;
-
-  send_command(GRAPH_MODE_ON);
-  for(j = c0; j < 0x08; j++)
-    {
-      set_position(j,row);
-      send_data(0x00);
-    }
-  send_command(GRAPH_MODE_OFF);  
-}
-
-/****************************************************************
- * page_clear
- ****************************************************************/
-void clear_col(unsigned char col, unsigned char r0)
-{
-  unsigned char i;
-
-  send_command(GRAPH_MODE_ON);
-  for(i = r0; i < 0x2F; i++)
-    {
-      set_position(col,i);
-      send_data(0x00);
-    }
-  send_command(GRAPH_MODE_OFF);
-}
-
-void _set_xy(unsigned char x, unsigned char y)
-{
-  send_command(GRAPH_MODE_ON);
-  send_command(y);
-  send_command(x);
-  send_command(GRAPH_MODE_OFF);
-}
-
-void set_position(unsigned char c0, unsigned char r0)
+void _set_xy(unsigned char c0, unsigned char r0)
 {
   unsigned char col, row, x, y;
 
@@ -229,5 +185,8 @@ void set_position(unsigned char c0, unsigned char r0)
       x+=0x08;
       y-=0x1F;
     }
-  _set_xy(x,y);
+  send_command(EXTEND_BEGIN);
+  send_command(GRAPH_MODE_OFF);
+  send_command(y);
+  send_command(x);
 }

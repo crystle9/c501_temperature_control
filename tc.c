@@ -76,8 +76,9 @@ void main()
 	  {
 	    calc_u();
 	    calc_u2();
-	    render_tp();
+
 	  }
+	render_tp();	
 	render_spline();
       }
 }
@@ -97,16 +98,14 @@ void render_status(unsigned char status)
   clear_buf(line_buf,LBUF,0);
   line_buf[0] = status == 0 ? SMILE : status;
   set_cursor(1,7);
-  put_line(line_buf,8);
+  put_line(line_buf);
 }
 
 void render_static_obj()
 {
   unsigned char size;
-  size = sprintf(line_buf,"Temperature:");
-  clear_buf(line_buf,LBUF,size);
   set_cursor(0,0);
-  put_line(line_buf,0);
+  put_line("Temperature:");
 }
 
 void render_tp()
@@ -115,7 +114,7 @@ void render_tp()
   size = sprintf(line_buf,"%d  ",tp);
   clear_buf(line_buf,LBUF,size);
   set_cursor(0,6);
-  put_line(line_buf,6);
+  put_line(line_buf);
 }
 
 void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0)

@@ -49,13 +49,13 @@ unsigned char draw_spline(unsigned char value)
   for (i = 0x10; i < 0x3F; i++)
     {
       unit_buf = getc_GDRAM(c0,i);
-      unit_buf|= sel1>>1;
+      unit_buf|= _cror_(sel1,1);
       if (i < r0)
 	unit_buf&= ~sel1;
       set_position(c0,i);
       send_data(unit_buf);
     }
-  sel1>>= 1;
+  sel1 = _cror_(sel1,1);
   if (sel1 == 0x80)
       if (++c0 > 0x07)
 	c0 = 0;

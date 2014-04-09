@@ -11,7 +11,7 @@
 #define SMILE 0x01
 
 unsigned char line_buf[LBUF];
-sbit PWM = P1^1;
+sbit PWM = P1^5;
 unsigned char u;
 unsigned char t0,t2;
 unsigned int t1;

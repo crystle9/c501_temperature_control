@@ -3,6 +3,7 @@
 #include "DS18B20.h"
 #include "KS0108.h"
 #include "HD7279.h"
+#include "stepper_motor.h"
 
 #define LBUF 17
 #define HIGH 95
@@ -12,8 +13,8 @@
 
 unsigned char line_buf[LBUF];
 sbit PWM = P1^5;
-unsigned char u;
-unsigned char t0,t2;
+unsigned char u, u2;
+unsigned char t0,t2,t3;
 unsigned int t1;
 int tp0,tp1,tp,old_tp;
 bit timer1_flag = 1;
@@ -22,6 +23,7 @@ void init();
 void init_t0();
 void init_ie0();
 void calc_u();
+void calc_u2();
 void render_static_obj();
 void render_tp();
 void render_tp0();
@@ -59,6 +61,7 @@ void main()
 	if (tp != old_tp)
 	  {
 	    calc_u();
+	    calc_u2();
 	    render_tp();
 	  }
 	render_spline();
@@ -119,6 +122,16 @@ void calc_u()
   u = p * 20;
 }
 
+void calc_u2()
+{
+  int p;
+  p = tp - tp1;
+  if(p < 0)
+    p = 0;
+  if(p > 0xFE) p = 0xFE;
+  u2 = 0xFF -p;
+}
+
 void response_key() interrupt 0
 {
   unsigned char keycode;
@@ -146,6 +159,11 @@ void pwm() interrupt 1
     }
   t0 ++;
   PWM = t0 < u ? 1 : 0;
+  if (t3++ > u2)
+    {
+      step_mode1();
+      t3 = 0;
+    }
   TR0 = 1;
 }
 
@@ -160,6 +178,7 @@ void init_t0()
   t0 = 0;
   t1 = 0;
   t2 = 0;
+  t3 = 0;
 }
 
 void init_ie0()

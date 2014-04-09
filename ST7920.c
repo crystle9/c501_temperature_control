@@ -8,26 +8,30 @@
 #define WRITE 0
 #define DATA 1
 #define COMMAND 0
-#define RSSPLAY_ON 0x3F
-#define RSSPLAY_OFF 0x3E
 
+#define DISPLAY_ON 0x3F
+#define DISPLAY_OFF 0x3E
 #define GRAPH_MODE_ON 0x36
 #define GRAPH_MODE_OFF 0x30
 
-sbit  RS = P2^0;
-sbit  RW = P2^1;
-sbit  EN = P2^2;
-sbit  BF = P0^7;
+sbit RS = P2^0;
+sbit RW = P2^1;
+sbit EN = P2^2;
+sbit PSB = P2^3;
+sbit BF = P0^7;
 
 void init_ST7920()
 {
-  send_command(RSSPLAY_ON);
+  PSB = 1;
+  send_command(DISPLAY_ON);
 }
 
 unsigned char draw_spline(unsigned char value)
 {
-  static unsigned char point = 0x80;
+  static unsigned char sel1 = 0x80;
   static unsigned char c0 = 0x00;
+
+  unsigned char unit_buf,r0,i;
 
   if (value < 0x00)
     {
@@ -41,13 +45,20 @@ unsigned char draw_spline(unsigned char value)
     }
   
   send_command(GRAPH_MODE_ON);
-  clear_col(c0+1,0x10);
-  set_position(c0,0x3F-value);
-  send_data(point);
-  point >>= 1;
-  if (point == 0x80)
-    if (++c0 > 0x07)
-      c0 = 0;
+  r0 = 0x3F - value;
+  for (i = 0x10; i < 0x3F; i++)
+    {
+      unit_buf = getc_GDRAM(c0,i);
+      unit_buf|= sel1>>1;
+      if (i < r0)
+	unit_buf&= ~sel1;
+      set_position(c0,i);
+      send_data(unit_buf);
+    }
+  sel1>>= 1;
+  if (sel1 == 0x80)
+      if (++c0 > 0x07)
+	c0 = 0;
   send_command(GRAPH_MODE_OFF);
   return 0;
 }
@@ -55,13 +66,13 @@ unsigned char draw_spline(unsigned char value)
  * at current row
  * given a string (0 < length < 16)
  *
- * print a stream of CHARACTERs on a single line, auto RETURN
+ * print a stream of CHARACTERs on a single line
  ****************************************************************/
-void put_line(unsigned char * str, unsigned char indent)
+void put_line(unsigned char * str, unsigned char length)
 {
   unsigned char i;
 
-  for (i = 0; i < 16 - indent; i++)
+  for (i = 0; i < length; i++)
     {
       send_data(*str++);
       if (*str == 0x00)
@@ -112,18 +123,38 @@ void _putc_ST7920(unsigned char c)
   RW=READ;
 }
 
+unsigned char _getc_ST7920()
+{
+  unsigned char dat;
+  
+  check_busy();
+  RW=READ;
+  P0=0xFF;
+  EN=ENABLE;
+  dat = P0;
+  EN=DISABLE;
+}
+
+unsigned char getc_GDRAM(unsigned char c0, unsigned char r0)
+{
+  set_position(c0,r0);
+  RS = DATA;
+  return _getc_ST7920();
+}
+
 void check_busy(void)
 {
   RS=COMMAND;
   RW=READ;
   P0=0xFF;
+  EN=ENABLE;
   while(BF)
     {
-      EN=ENABLE;
       EN=DISABLE;
       RS=COMMAND;
       RW=READ;
       P0=0xFF;
+      EN=ENABLE;
     }
   EN=DISABLE;
 }
@@ -134,7 +165,7 @@ void clear_screen()
 
   for (i = 0; i < 4; i++)
     {
-      _set_xy(i,0);
+      set_cursor(i,0);
       for (j = 0; j < 16; j++)
 	send_data(' ');
     }

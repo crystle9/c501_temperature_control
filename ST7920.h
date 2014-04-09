@@ -15,6 +15,8 @@ void _set_xy(unsigned char x, unsigned char y);
 void check_busy(void);
 void send_command(unsigned char c);
 void send_data(unsigned char c);
+unsigned char getc_GDRAM(unsigned char c0, unsigned char r0);
+unsigned char _getc_ST7920();
 void _putc_ST7920(unsigned char c);
 
 #endif // ST7920_H

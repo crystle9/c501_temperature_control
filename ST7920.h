@@ -3,17 +3,17 @@
 
 void init_ST7920();
 void put_line(unsigned char * str);
-void set_cursor(unsigned char x, unsigned char y);
-void clear_screen();
+void set_cursor(unsigned char y, unsigned char x);
 
-unsigned char draw_spline(unsigned char value);
+unsigned char draw_spline(char value);
+void _geti_GDRAM(unsigned char c0, unsigned char r0);
 void _set_xy(unsigned char c0, unsigned char r0);
-unsigned char _getc_ST7920();
 
-void check_busy(void);
+void check_busy();
 void send_command(unsigned char c);
 void send_data(unsigned char c);
-unsigned char _getc_GDRAM(unsigned char c0, unsigned char r0);
 void _putc_ST7920(unsigned char c);
+unsigned char receive_data();
+unsigned char _getc_ST7920();
 
 #endif // ST7920_H

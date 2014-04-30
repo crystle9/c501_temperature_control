@@ -3,7 +3,7 @@
 #include <reg51.h>
 #include "delay.h"
 
-sbit DQ = P1^0;
+sbit DQ = P1^4;
 
 int get_temperature()
 {

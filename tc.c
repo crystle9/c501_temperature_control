@@ -21,7 +21,7 @@
 #define HIGH 95
 #define LOW 15
 
-#define SMILE 0x01
+#define SMILE 0x05
 
 unsigned char line_buf[LBUF];
 sbit PWM = P1^5;
@@ -45,29 +45,26 @@ void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0);
 
 void init()
 {
-  u = 0;
-  tp0 = 40;
-  tp1 = 45;
-  tp = 41;
-  old_tp = tp;
-  EA = 1;
   init_ST7920();
   init_HD7279();
-  clear_screen();
   init_t0();
   init_ie0();
-  render_static_obj();
+  u = 0;
+  u2 = 0xFF;
+  tp0 = 40;
+  tp1 = 20;
+  EA = 1;
 }
 
 
 void main()
 {
   init();
+  render_static_obj();
   while(1)
     if (timer1_flag)
       {
 	timer1_flag = 0;
-	PWM = 0;
 	old_tp = tp;
 	EA = 0;
 	tp = get_temperature();
@@ -76,16 +73,15 @@ void main()
 	  {
 	    calc_u();
 	    calc_u2();
-
+	    render_tp();	
 	  }
-	render_tp();	
 	render_spline();
       }
 }
 
 void render_spline()
 {
-  unsigned char value;
+  char value;
   unsigned char status;
 
   value = tp / 2;
@@ -103,7 +99,6 @@ void render_status(unsigned char status)
 
 void render_static_obj()
 {
-  unsigned char size;
   set_cursor(0,0);
   put_line("Temperature:");
 }
@@ -127,10 +122,10 @@ void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0)
 void calc_u()
 {
   int p;
-  p = tp0 - tp;
+  p = (tp0 - tp);
   if(p < 0) p = 0;
   if(p > 10) p = 10;
-  u = p * 20;
+  u = p * 100;
 }
 
 void calc_u2()

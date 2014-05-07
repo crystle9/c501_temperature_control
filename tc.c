@@ -21,7 +21,7 @@
 #define HIGH 95
 #define LOW 15
 
-#define SMILE 0x05
+#define SMILE 0x20
 
 unsigned char line_buf[LBUF];
 sbit PWM = P1^5;
@@ -53,7 +53,7 @@ void init()
   u = 0;
   u2 = 0xFF;
   old_tp0 = tp0 = 40;
-  old_tp1 = tp1 = 20;
+  old_tp1 = tp1 = 41;
   EA = 1;
 }
 
@@ -79,9 +79,15 @@ void main()
 	    render_tp();	
 	  }
 	if (tp0 != old_tp0)
-	  render_tp0();
+	  {
+	    calc_u();
+	    render_tp0();
+	  }
 	if (tp1 != old_tp1)
-	  render_tp1();
+	  {
+	    calc_u2();
+	    render_tp1();
+	  }
 	render_spline();
       }
 }
@@ -91,7 +97,7 @@ void render_spline()
   char value;
   unsigned char status;
 
-  value = tp / 2;
+  value = tp - 25;
   status = draw_spline(value); // 8:55
   render_status(status);
 }
@@ -108,6 +114,10 @@ void render_static_obj()
 {
   set_cursor(0,0);
   put_line("Temperature:");
+  set_cursor(1,0);
+  put_line("L:");
+  set_cursor(1,3);
+  put_line("H:");
 }
 
 void render_tp()
@@ -126,7 +136,7 @@ void render_tp0()
   
   size = sprintf(line_buf,"%d  ",tp0);
   clear_buf(line_buf,LBUF,size);
-  set_cursor(1,0);
+  set_cursor(1,1);
   put_line(line_buf);
 }
 
@@ -136,7 +146,7 @@ void render_tp1()
   
   size = sprintf(line_buf,"%d  ",tp1);
   clear_buf(line_buf,LBUF,size);
-  set_cursor(1,3);
+  set_cursor(1,4);
   put_line(line_buf);
 }
 
@@ -150,8 +160,12 @@ void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0)
 void calc_u()
 {
   int p;
+
   p = 10 * (tp0 - tp);
-  if(p < 0) p = 0;
+  if(p < 0)
+      p = 0;
+  else
+    p += 0x80;
   if(p > 0xFF) p = 0xFF;
   u = p;
 }
@@ -159,10 +173,14 @@ void calc_u()
 void calc_u2()
 {
   int p;
+
   p = 10 * (tp - tp1);
-  if(p < 0) p = 0;
+  if(p < 0)
+    p = 0;
+  else
+    p += 0x20;
   if(p > 0xFF) p = 0xFF;
-  u2 = 0xFF -p;
+  u2 = 0xFF - p;
 }
 
 void response_key() interrupt 0

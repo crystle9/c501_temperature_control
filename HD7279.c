@@ -36,7 +36,7 @@ void putc_HD7279(unsigned char dat)
     SHORT_DELAY;
     CLK=0;
     SHORT_DELAY;
-    select_bit <<= 1;
+    select_bit >>= 1;
   }
   DAT=0;
 }
@@ -45,13 +45,14 @@ unsigned char getc_HD7279()
 {
   unsigned char i;
   unsigned char rst=0x00;
-  LONG_DELAY;
+
   DAT=1;
+  LONG_DELAY;
   for(i=0;i<8;i++)
   {
     CLK=1;
     SHORT_DELAY;
-    rst <<= rst;
+    rst <<= 1;
     if(DAT)
       rst++;
     CLK=0;

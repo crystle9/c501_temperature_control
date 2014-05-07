@@ -28,7 +28,7 @@ sbit PWM = P1^5;
 unsigned char u, u2;
 unsigned char t0,t3;
 unsigned int t1;
-int tp0,tp1,tp,old_tp;
+int tp0,tp1,tp,old_tp,old_tp0,old_tp1;
 bit timer1_flag = 1;
 
 void init();
@@ -39,6 +39,7 @@ void calc_u2();
 void render_static_obj();
 void render_tp();
 void render_tp0();
+void render_tp1();
 void render_spline();
 void render_status(unsigned char status);
 void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0);
@@ -51,8 +52,8 @@ void init()
   init_ie0();
   u = 0;
   u2 = 0xFF;
-  tp0 = 40;
-  tp1 = 20;
+  old_tp0 = tp0 = 40;
+  old_tp1 = tp1 = 20;
   EA = 1;
 }
 
@@ -61,6 +62,8 @@ void main()
 {
   init();
   render_static_obj();
+  render_tp0();
+  render_tp1();
   while(1)
     if (timer1_flag)
       {
@@ -75,6 +78,10 @@ void main()
 	    calc_u2();
 	    render_tp();	
 	  }
+	if (tp0 != old_tp0)
+	  render_tp0();
+	if (tp1 != old_tp1)
+	  render_tp1();
 	render_spline();
       }
 }
@@ -106,9 +113,30 @@ void render_static_obj()
 void render_tp()
 {
   unsigned char size;
+  
   size = sprintf(line_buf,"%d  ",tp);
   clear_buf(line_buf,LBUF,size);
   set_cursor(0,6);
+  put_line(line_buf);
+}
+
+void render_tp0()
+{
+  unsigned char size;
+  
+  size = sprintf(line_buf,"%d  ",tp0);
+  clear_buf(line_buf,LBUF,size);
+  set_cursor(1,0);
+  put_line(line_buf);
+}
+
+void render_tp1()
+{
+  unsigned char size;
+  
+  size = sprintf(line_buf,"%d  ",tp1);
+  clear_buf(line_buf,LBUF,size);
+  set_cursor(1,3);
   put_line(line_buf);
 }
 
@@ -122,19 +150,18 @@ void clear_buf(unsigned char * buf, unsigned char size, unsigned char b0)
 void calc_u()
 {
   int p;
-  p = (tp0 - tp);
+  p = 10 * (tp0 - tp);
   if(p < 0) p = 0;
-  if(p > 10) p = 10;
-  u = p * 100;
+  if(p > 0xFF) p = 0xFF;
+  u = p;
 }
 
 void calc_u2()
 {
   int p;
-  p = tp - tp1;
-  if(p < 0)
-    p = 0;
-  if(p > 0xFE) p = 0xFE;
+  p = 10 * (tp - tp1);
+  if(p < 0) p = 0;
+  if(p > 0xFF) p = 0xFF;
   u2 = 0xFF -p;
 }
 
@@ -143,6 +170,8 @@ void response_key() interrupt 0
   unsigned char keycode;
 
   keycode = get_key();
+  old_tp0 = tp0;
+  old_tp1 = tp1;
   if (keycode == 0x00)
     tp0--;
   else if (keycode == 0x01)

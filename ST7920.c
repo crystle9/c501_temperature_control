@@ -35,7 +35,9 @@ void init_ST7920()
 unsigned char draw_spline(char value)
 {
   static unsigned int sel1 = 0x8000;
+  static unsigned int sel2 = 0x4000;
   static unsigned char c0 = 0x00;
+  static unsigned char c1 = 0x00;
 
   unsigned char r0,i;
 
@@ -53,14 +55,19 @@ unsigned char draw_spline(char value)
   send_command(EXTEND_BEGIN);
   send_command(GRAPH_MODE_OFF);
   r0 = 0x3F - value;
-  for (i = 0x10; i < 0x40; i++)
+  for (i = 0x00; i < 0x40; i++)
+    {
+      _geti_GDRAM(c1,i);
+      *punit_buf |= sel2; 
+      _set_xy(c1,i);
+      send_data(unit_buf[0]);
+      send_data(unit_buf[1]);
+    }
+  for (i = 0x00; i <= r0; i++)
     {
       _geti_GDRAM(c0,i);
       //*punit_buf |= _iror_(sel1,1);
-      if (i <= r0)
-	*punit_buf &= ~sel1;
-      else
-	*punit_buf |= sel1; 
+      *punit_buf &= ~sel1;
       _set_xy(c0,i);
       send_data(unit_buf[0]);
       send_data(unit_buf[1]);
@@ -69,6 +76,10 @@ unsigned char draw_spline(char value)
     if (++c0 > 0x07)
       c0 = 0;
   sel1 = _iror_(sel1,1);
+  if (sel2 == 0x0001)
+    if (++c1 > 0x07)
+      c1 = 0;
+  sel2 = _iror_(sel2,1);
   send_command(GRAPH_MODE_ON);
   send_command(EXTEND_END);
   return 0;
